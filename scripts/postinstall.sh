@@ -10,6 +10,7 @@
 #
 #       dockutil - Used to move the Privileges app to the macOS Dock.
 #                - Must be installed on the Mac prior to running this script.
+#                - Example script at 
 #                - Repo: https://github.com/captam3rica/dockutil.
 #                - This version of dockutil is a fork from the original repo. Forked
 #                  becasue the original was not python 3 ready when this script was
