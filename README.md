@@ -43,7 +43,7 @@ Item | Description
 | **[`privileges-checker`](https://github.com/captam3rica/sap-privileges-installer/tree/master/helper-tools/privileges-checker)** | Companion tool that can be used alongside **Privilegs.app**.
 | **[`priviletes-checker launchagent`](https://github.com/captam3rica/sap-privileges-installer/blob/master/payload/Library/LaunchAgents/com.github.captam3rica.privileges.checker.plist)** | Example launchAgent used to set a user's privilege back to standard at a specific interval. |
 | **[`moving privileges to the dock`](https://github.com/captam3rica/sap-privileges-installer/tree/master/helper-tools/move-privileges-to-dock-with-dockutil)** | Example script that can be used to move Privileges.app to the Dock. |
-| **[`scripts`](https://github.com/captam3rica/sap-privileges-installer/tree/master/preferences)** | Contains pre and post installer scripts related to this Packages project.
+| **[`scripts`](https://github.com/captam3rica/sap-privileges-installer/tree/master/scripts)** | Contains pre and post installer scripts related to this Packages project.
 
 ## Installation
 
