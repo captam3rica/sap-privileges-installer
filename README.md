@@ -30,12 +30,11 @@ Item | Description
 | **[`preferences`]()** | Preference payloads used in this project. (notifications.mobileconfig & Privileges.app preferences mobileconfig).
 | **[`privileges-checker`]()** | Companion tool that can be used alongside **Privilegs.app**.
 | **[`readme-images`]()** | Images used in this repo's README file.
-| **[`scripts`]()** | Contains scripts related to this Packages project.
-| **[`Packages .pkgproj file`]()** | Packages.app project file used to build the installer.
+| **[`scripts`]()** | Contains pre and post installer scripts related to this Packages project.
 
 ## Installation
 
-1. Create a deployment package. The Packages.app `.pkgproj` file is included in this repo, but any packaging method can be used.
+1. Create a deployment package. The Packages.app tool was used here, but any packaging method can be used.
 2. Upload the package to your MDM.
 3. Scope and deploy the package to your Mac fleet.
 
