@@ -161,7 +161,8 @@ main() {
     fi
 
     # Remove the logged-in user from the admin group
-    /bin/launchctl asuser "$current_user_uid" sudo -u "$current_user" /Applications/Privileges.app/Contents/Resources/PrivilegesCLI --remove
+    /bin/launchctl asuser "$current_user_uid" sudo -u "$current_user" \
+        /Applications/Privileges.app/Contents/Resources/PrivilegesCLI --remove
 
     # Check the user's privileges
     current_privileges_status="$(current_privileges $current_user)"
@@ -180,17 +181,9 @@ main() {
 
     # Move the app
     /usr/bin/logger "Attempting to move $APP_NAME to the Dock of $current_user ..."
-    # move_app_to_dock "/Applications/$APP_NAME" "$POSITION" "$current_user" "$current_user_uid"
 
     # Use dockutil to move an app to the macOS dock.
     # See if dockutil is installed
-    #
-    # Args
-    #   $1: /path/to/app.app
-    #   $2: Postion in the Dock. (1 would be right after Finder.app, which is the first
-    #       app in the Dock.)
-    #   $3: The current_user var passed in
-    #   $4: current user's UID
     if [ -e "/usr/local/bin/dockutil" ]; then
 
         # See if the Privileges app is installed in /Applications before trying to move
