@@ -61,7 +61,7 @@ main() {
             /usr/bin/logger "Using dockutil to move Privileges.app to the user's Dock ..."
             /bin/launchctl asuser "$current_user_uid" \
                 /usr/bin/sudo -u "$current_user" \
-                /usr/local/bin/dockutil --add "/Applications/$APP" --position "$POSITION"
+                /usr/local/bin/dockutil --add "/Applications/$APP" --position "$POSITION" --allhomes
 
         else
             /usr/bin/logger "$APP is not installed ..."
