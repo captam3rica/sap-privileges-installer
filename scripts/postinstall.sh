@@ -6,22 +6,37 @@
 #   Once Privileges is installed the installer will attempt to de-elevate the logged-in
 #   user automatically.
 #
+#   dockutil is used to move the application to the current user's dock.
+#
 #   Dependencies
 #
 #       dockutil - Used to move the Privileges app to the macOS Dock.
 #                - Must be installed on the Mac prior to running this script.
 #                - Example script at
 #                - Repo: https://github.com/captam3rica/dockutil.
-#                - This version of dockutil is a fork from the original repo. Forked
-#                  becasue the original was not python 3 ready when this script was
-#                  created.
+#                   - This version of dockutil is a fork from the original repo. Forked
+#                     becasue the original was not python 3 ready when this script was
+#                     created.
 #
 
 
+#######################################################################################
+################################ VARIABLES ############################################
+#######################################################################################
+
 APP_NAME="Privileges.app"
+
+# This is the location in the user's dock where we want to place the app.
+# Position 1 is the spot just after the Finder.app icon.
 POSITION="1"
+
 LAUNCH_DAEMON="/Library/LaunchDaemons/corp.sap.privileges.helper.plist"
 PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.checker.plist"
+
+
+#######################################################################################
+####################### FUNCTIONS - DO NOT MODIFY #####################################
+#######################################################################################
 
 
 get_current_user() {
@@ -87,42 +102,20 @@ current_privileges() {
 }
 
 
-move_app_to_dock() {
-    # Use dockutil to move an app to the macOS dock.
-    # See if dockutil is installed
-    #
-    # Args
-    #   $1: /path/to/app.app
-    #   $2: Postion in the Dock. (1 would be right after Finder.app, which is the first
-    #       app in the Dock.)
-    if [ -e "/usr/local/bin/dockutil" ]; then
-
-        # See if the Privileges app is installed in /Applications
-        if [ -e "$1" ]; then
-            echo "Using dockutil to move Privileges.app to the user's Dock ..."
-            /bin/launchctl asuser "$current_user_uid" \
-                /usr/bin/sudo -u "$current_user" \
-                /usr/local/bin/dockutil --add "$1" --position "$2"
-
-        else
-            echo "$1 is not installed ..."
-            echo "The current user's dock has not been modified ..."
-            exit 1
-        fi
-
-    else
-        echo "dockutil is not installed ..."
-        echo "The current user's dock has not been modified ..."
-        exit 1
-    fi
-}
+#######################################################################################
+#################### MAIN LOGIC - DO NOT MODIFY #######################################
+#######################################################################################
 
 
 main() {
     # Run main logic
 
+    # Get the current logged in user and uid
     current_user="$(get_current_user)"
     current_user_uid="$(get_current_user_uid $current_user)"
+
+    /usr/bin/logger "Current logged in user: $current_user"
+    /usr/bin/logger "Current logged in UID: $current_user_uid"
 
     # Load the LaunchDaemon
     if [ -f "$LAUNCH_DAEMON" ]; then
@@ -182,12 +175,64 @@ main() {
     fi
 
     # Wait for for dockutil
-    /bin/echo "Waiting some time for dockutil to be ready ..."
+    /usr/bin/logger "Waiting some time for dockutil to be ready ..."
     /bin/sleep 90
 
     # Move the app
-    /bin/echo "Attempting to move $APP_NAME to the Dock ..."
-    move_app_to_dock "/Applications/$APP_NAME" "$POSITION"
+    /usr/bin/logger "Attempting to move $APP_NAME to the Dock of $current_user ..."
+    # move_app_to_dock "/Applications/$APP_NAME" "$POSITION" "$current_user" "$current_user_uid"
+
+    # Use dockutil to move an app to the macOS dock.
+    # See if dockutil is installed
+    #
+    # Args
+    #   $1: /path/to/app.app
+    #   $2: Postion in the Dock. (1 would be right after Finder.app, which is the first
+    #       app in the Dock.)
+    #   $3: The current_user var passed in
+    #   $4: current user's UID
+    if [ -e "/usr/local/bin/dockutil" ]; then
+
+        # See if the Privileges app is installed in /Applications before trying to move
+        if [ -e "/Applications/$APP_NAME" ]; then
+
+            # Use dockutil to check for the app in the current users dock
+            check_priv_in_dock=$(/usr/local/bin/dockutil \
+                --find 'Privileges' /Users/"$current_user" | grep "was found")
+
+            # If the app is not found in the current user's dock use dockutil to add
+            # the app to the current user's dock.
+            if [ -z "$check_priv_in_dock" ]; then
+                # Use dockutil to add app to user's dock.
+                /usr/bin/logger "Using dockutil to add $APP_NAME to the user's Dock ..."
+                dockutil_response=$(/usr/local/bin/dockutil \
+                    --add "/Applications/$APP_NAME" --position "$POSITION" --allhomes)
+                # Log the dockutil output received from the --add command.
+                /usr/bin/logger "$dockutil_response"
+
+            else
+                # If the app is already in the current user's dock make sure that it is
+                # in the first position by using the dockutil --move command.
+                /usr/bin/logger "Not attempting to add via dockutil, going to move ..."
+                move_response=$(/usr/local/bin/dockutil --move 'Privileges' \
+                    --position "$POSITION" --allhomes)
+
+                # Log the response.
+                 /usr/bin/logger "$move_response"
+
+            fi
+
+        else
+            /usr/bin/logger "$APP_NAME is not installed ..."
+            /usr/bin/logger "The current user's dock has not been modified ..."
+            exit 1
+        fi
+
+    else
+        /usr/bin/logger "dockutil is not installed ..."
+        /usr/bin/logger "The current user's dock has not been modified ..."
+        # exit 1
+    fi
 }
 
 

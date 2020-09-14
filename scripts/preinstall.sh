@@ -8,70 +8,25 @@
 #
 
 
+#######################################################################################
+################################ VARIABLES ############################################
+#######################################################################################
+
+# Put the app name here
 APP_NAME="Privileges.app"
+
+# LaunchDaemons and Labels
 LAUNCH_DAEMON_LABEL="/Library/LaunchDaemons/corp.sap.privileges.helper"
 LAUNCH_DAEMON="/Library/LaunchDaemons/corp.sap.privileges.helper.plist"
+
+# LaunchAgents and Labels
 PRIVILEGES_CHECKER_LA_LABEL="/Library/LaunchAgents/com.github.captam3rica.privileges.checker"
 PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.checker.plist"
 
 
-main() {
-    # Run main logic
-
-    current_user="$(get_current_user)"
-    current_user_uid="$(get_current_user_uid $current_user)"
-
-    # Stop and Unload the LaunchDaemon
-    if [ -f "$LAUNCH_DAEMON" ]; then
-        # Stop the LaunchDaemon
-        /bin/launchctl stop "$LAUNCH_DAEMON_LABEL"
-
-        # Unload the daemon
-        /bin/launchctl unload "$LAUNCH_DAEMON"
-
-        # Capture the truthy or falsy of the previous command
-        RET="$?"
-
-        if [ "$RET" -ne 0 ]; then
-            # Daemon failed to load
-            /usr/bin/logger "Failed to unload $LAUNCH_DAEMON ..."
-            exit "$RET"
-        fi
-
-        /usr/bin/logger "$APP_NAME LaunchDaemon unload completed"
-
-    else
-        /usr/bin/logger "$LAUNCH_DAEMON not found ..."
-    fi
-
-    # Stup adn unload privilegschecker LaunchAgent if present
-    # This needs to be loaded as the current logged in user otherwise this will load
-    # the next time a user logs in.
-    if [ -f "$PRIVILEGES_CHECKER_LA" ]; then
-
-        # Stop the agent
-        /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
-            "$current_user" /bin/launchctl stop "$PRIVILEGES_CHECKER_LA_LABEL"
-
-        # Unload the agent
-        /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
-            "$current_user" /bin/launchctl unload "$PRIVILEGES_CHECKER_LA"
-
-        # Capture the truthy or falsy of the previous command
-        RET="$?"
-
-        if [ "$RET" -ne 0 ]; then
-            # Daemon failed to load
-            /usr/bin/logger "Failed to unload $PRIVILEGES_CHECKER_LA ..."
-            exit "$RET"
-        fi
-
-        /usr/bin/logger "$APP_NAME privilegeschecker LaunchAgent unload completed"
-
-    else
-        /usr/bin/logger "$PRIVILEGES_CHECKER_LA not found ..."
-    fi
-}
+#######################################################################################
+####################### FUNCTIONS - DO NOT MODIFY #####################################
+#######################################################################################
 
 
 get_current_user() {
@@ -109,6 +64,72 @@ get_current_user_uid() {
         fi
     done
     printf "%s\n" "$current_user_uid"
+}
+
+
+#######################################################################################
+#################### MAIN LOGIC - DO NOT MODIFY #######################################
+#######################################################################################
+
+
+main() {
+    # Run main logic
+
+    current_user="$(get_current_user)"
+    current_user_uid="$(get_current_user_uid $current_user)"
+
+    # Stop and Unload the LaunchDaemon
+    if [ -f "$LAUNCH_DAEMON" ]; then
+        # Stop the LaunchDaemon
+        /bin/launchctl stop "$LAUNCH_DAEMON_LABEL"
+
+        # Unload the daemon
+        /bin/launchctl unload "$LAUNCH_DAEMON"
+
+        # Capture the truthy or falsy of the previous command
+        RET="$?"
+
+        # Check the return status of the previous command to make sure it did not fail.
+        if [ "$RET" -ne 0 ]; then
+            # Daemon failed to load
+            /usr/bin/logger "Failed to unload $LAUNCH_DAEMON ..."
+            exit "$RET"
+        fi
+
+        /usr/bin/logger "$APP_NAME LaunchDaemon unload completed"
+
+    else
+        /usr/bin/logger "$LAUNCH_DAEMON not found ..."
+    fi
+
+    # Stop and unload privilegschecker LaunchAgent if present
+    # This needs to be loaded as the current logged in user otherwise this will load
+    # the next time a user logs in.
+    if [ -f "$PRIVILEGES_CHECKER_LA" ]; then
+
+        # Stop the agent
+        /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
+            "$current_user" /bin/launchctl stop "$PRIVILEGES_CHECKER_LA_LABEL"
+
+        # Unload the agent
+        /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
+            "$current_user" /bin/launchctl unload "$PRIVILEGES_CHECKER_LA"
+
+        # Capture the truthy or falsy of the previous command
+        RET="$?"
+
+        # Check the return status of the previous command to make sure it did not fail.
+        if [ "$RET" -ne 0 ]; then
+            # Daemon failed to load
+            /usr/bin/logger "Failed to unload $PRIVILEGES_CHECKER_LA ..."
+            exit "$RET"
+        fi
+
+        /usr/bin/logger "$APP_NAME privilegeschecker LaunchAgent unload completed"
+
+    else
+        /usr/bin/logger "$PRIVILEGES_CHECKER_LA not found ..."
+    fi
 }
 
 
