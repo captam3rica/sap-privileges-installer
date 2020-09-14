@@ -147,11 +147,11 @@ unload_and_stop_agent_or_daemon() {
     if [ -f "$daemon" ]; then
 
         # Stop the LaunchDaemon
-        echo "Stopping $label ..."
+        /usr/bin/logger "Stopping $label ..."
         /bin/launchctl stop "$label"
 
         # Unload the daemon
-        echo "Unloading $daemon ..."
+        /usr/bin/logger "Unloading $daemon ..."
         /bin/launchctl unload "$daemon"
 
         # Capture the truthy or falsy of the previous command
@@ -159,14 +159,14 @@ unload_and_stop_agent_or_daemon() {
 
         if [ "$ret" -ne 0 ]; then
             # Daemon failed to load
-            echo "Failed to unload $daemon ..."
+            /usr/bin/logger "Failed to unload $daemon ..."
             exit "$ret"
         fi
 
-        echo "$daemon unload completed"
+        /usr/bin/logger "$daemon unload completed"
 
     else
-        echo "$daemon not found ..."
+        /usr/bin/logger "$daemon not found ..."
     fi
 }
 
@@ -174,7 +174,7 @@ unload_and_stop_agent_or_daemon() {
 kill_process() {
     # Kill a process by name
 
-    echo "Killing the $1 ..."
+    /usr/bin/logger "Killing the $1 ..."
     /usr/bin/killall "$1"
 
     # Capture the truthy or falsy of the previous command
@@ -182,7 +182,7 @@ kill_process() {
 
     if [ "$ret" -ne 0 ]; then
         # Daemon failed to load
-        echo "Failed kill the $1 process ..."
+        /usr/bin/logger "Failed kill the $1 process ..."
         exit "$ret"
     fi
 }
@@ -192,11 +192,11 @@ kill_process() {
 #################### MAIN LOGIC - DO NOT MODIFY #######################################
 #######################################################################################
 
-echo ""
-echo "Start uninstaller ..."
-echo ""
-echo "Running $SCRIPT_NAME"
-echo ""
+/usr/bin/logger ""
+/usr/bin/logger "Start uninstaller ..."
+/usr/bin/logger ""
+/usr/bin/logger "Running $SCRIPT_NAME"
+/usr/bin/logger ""
 
 # Grab the current user and current user uuid
 current_user="$(get_current_user)"
@@ -208,27 +208,27 @@ current_user_uid="$(get_current_user_uid $current_user)"
 
 # Only run if the PrivilegesCLI is installed
 if [ -f "$PRIVS_CLI" ]; then
-    echo "Checking the current logged-in user's privileges ..."
+    /usr/bin/logger "Checking the current logged-in user's privileges ..."
 
     # Return privilege status
     privilege_status="$(current_privileges $current_user)"
-    echo "The current logged-in user's privilege is $privilege_status"
+    /usr/bin/logger "The current logged-in user's privilege is $privilege_status"
 
     if [ "$privilege_status" = "admin" ]; then
         # Remove the user from the admin group
-        echo "$current_user is already an admin user ..."
+        /usr/bin/logger "$current_user is already an admin user ..."
 
     else
-        echo "Adding $current_user to the admin group ..."
+        /usr/bin/logger "Adding $current_user to the admin group ..."
         add_admin_privileges "$current_user_uid" "$current_user"
 
         privilege_status="$(current_privileges $current_user)"
-        echo "The current logged-in user's privilege is $privilege_status"
+        /usr/bin/logger "The current logged-in user's privilege is $privilege_status"
     fi
 
 else
-    echo "The PrivilegesCLI tool is not installed ..."
-    echo "User's privileges have not been harmed ..."
+    /usr/bin/logger "The PrivilegesCLI tool is not installed ..."
+    /usr/bin/logger "User's privileges have not been harmed ..."
 fi
 
 #
@@ -247,8 +247,8 @@ unload_and_stop_agent_or_daemon "$PRIVS_CHECKER_LA" "$PRIVSCHECKER_LA_LABEL"
 PRIVILEGES_APP_PROC=$(/usr/bin/pgrep "Privileges")
 
 if [ "$PRIVILEGES_APP_PROC" != "" ]; then
-    echo "The $APP_NAME process is running with id $PRIVILEGES_APP_PROC ..."
-    echo "Killing the process ..."
+    /usr/bin/logger "The $APP_NAME process is running with id $PRIVILEGES_APP_PROC ..."
+    /usr/bin/logger "Killing the process ..."
     /usr/bin/killall "$PRIVILEGES_APP_PROC"
 
     # Capture the truthy or falsy of the previous command
@@ -256,12 +256,12 @@ if [ "$PRIVILEGES_APP_PROC" != "" ]; then
 
     if [ "$RET" -ne 0 ]; then
         # Daemon failed to load
-        echo "Failed kill the $APP_NAME process ..."
+        /usr/bin/logger "Failed kill the $APP_NAME process ..."
         exit "$RET"
     fi
 
 else
-    echo "The $APP_NAME process is not running ..."
+    /usr/bin/logger "The $APP_NAME process is not running ..."
 fi
 
 #
@@ -282,11 +282,11 @@ for file in $REM_LIST; do
 
     if [ -e "$file" ]; then
         #statements
-        echo "Removing $file ..."
+        /usr/bin/logger "Removing $file ..."
         /bin/rm -Rf "$file"
 
     else
-        echo "$file does not exist ..."
+        /usr/bin/logger "$file does not exist ..."
     fi
 
 done
@@ -303,13 +303,13 @@ kill_process "cfprefsd"
 
 # Make sure that dockutil is installed on the system before calling it.
 if [ -e "/usr/local/bin/dockutil" ]; then
-    echo "Removing $APP_NAME from the current user's Dock ..."
+    /usr/bin/logger "Removing $APP_NAME from the current user's Dock ..."
     /usr/local/bin/dockutil --remove 'Privileges'
 else
-    echo "The dockutil binary is not installed on this system 🙁"
+    /usr/bin/logger "The dockutil binary is not installed on this system 🙁"
 fi
 
 
-echo ""
-echo "End uninstaller ..."
-echo ""
+/usr/bin/logger ""
+/usr/bin/logger "End uninstaller ..."
+/usr/bin/logger ""
