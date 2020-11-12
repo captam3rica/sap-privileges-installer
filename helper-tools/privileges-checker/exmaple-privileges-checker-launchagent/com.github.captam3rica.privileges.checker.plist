@@ -12,6 +12,6 @@
 		<string>/Library/Scripts/mdmhelpers/privilegeschecker.sh</string>
 	</array>
 	<key>StartInterval</key>
-	<integer>900</integer>
+	<integer>30</integer>
 </dict>
 </plist>
