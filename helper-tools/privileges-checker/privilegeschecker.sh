@@ -32,6 +32,9 @@
 
 VERSION=0.3.0
 
+# Number of seconds to wait before removing admin rights from the current user.
+SECONDS_TO_WAIT=900
+
 SCRIPT_NAME=$(/usr/bin/basename "$0" | /usr/bin/awk -F "." '{print $1}')
 
 # Binaries
@@ -42,40 +45,6 @@ PRIVILEGES_CLI="/Applications/Privileges.app/Contents/Resources/PrivilegesCLI"
 #######################################################################################
 ####################### FUNCTIONS - DO NOT MODIFY #####################################
 #######################################################################################
-
-
-logging_current_user() {
-    # Log to the current logged-in user's ~/Library/Logs directory.
-    # Pe-pend text and print to standard output
-    # Takes in a log level and log string.
-    # Example: logging "INFO" "Something describing what happened."
-
-    # Current logged in user UID.
-    cu_uid="$1"
-    # Currently logged in user
-    cu="$2"
-
-    log_level=$(printf "$3" | /usr/bin/tr '[:lower:]' '[:upper:]')
-    log_statement="$4"
-    LOG_NAME="$SCRIPT_NAME.log"
-    LOG_PATH="/Users/$cu/Library/Logs/$LOG_NAME"
-
-    if [ -z "$log_level" ]; then
-        # If the first builtin is an empty string set it to log level INFO
-        log_level="INFO"
-    fi
-
-    if [ -z "$log_statement" ]; then
-        # The statement was piped to the log function from another command.
-        log_statement=""
-    fi
-
-    DATE=$(date +"[%b %d, %Y %Z %T $log_level]:")
-    /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" \
-        --login printf "%s %s\n" "$DATE" "$log_statement" >> "$LOG_PATH"
-}
-
-
 
 get_current_user() {
     # Return the current logged-in user
@@ -164,42 +133,42 @@ main() {
     current_user_uid="$(get_current_user_uid $current_user)"
 
 
-    logging_current_user "$current_user_uid" "$current_user" "" "--- Start $SCRIPT_NAME log ---"
-    logging_current_user "$current_user_uid" "$current_user" "" ""
-    logging_current_user "$current_user_uid" "$current_user" "" "Version: $VERSION"
+    /bin/echo "--- Start $SCRIPT_NAME log ---"
+    /bin/echo ""
+    /bin/echo "Version: $VERSION"
 
-    logging_current_user "$current_user_uid" "$current_user" "" "Current Logged-in User: $current_user($current_user_uid)"
+    /bin/echo "Current Logged-in User: $current_user($current_user_uid)"
 
     # Only run if the PrivilegesCLI is installed
     if [ -f "$PRIVILEGES_CLI" ]; then
-        logging_current_user "$current_user_uid" "$current_user_uid" "$current_user" "" "Checking the current logged-in user's privileges ..."
+        /bin/echo "Checking the current logged-in user's privileges ..."
 
         # Return privilege status
         privilege_status="$(current_privileges $current_user)"
-        logging_current_user "$current_user_uid" "$current_user" "" "The current logged-in user's privilege is $privilege_status"
+        /bin/echo"The current logged-in user's privilege is $privilege_status"
 
         if [ "$privilege_status" = "admin" ]; then
             # Remove the user from the admin group
-            logging_current_user "$current_user_uid" "$current_user" "" "Removing $current_user from the admin group ..."
+            /bin/echo "Removing $current_user from the admin group ..."
             remove_admin_privileges "$current_user_uid" "$current_user"
 
             privilege_status="$(current_privileges $current_user)"
-            logging_current_user "$current_user_uid" "$current_user" "" "The current logged-in user's privilege is $privilege_status"
+            /bin/echo "The current logged-in user's privilege is $privilege_status"
 
         else
-            logging_current_user "$current_user_uid" "$current_user" "" "$current_user is already a standard user ..."
+            /bin/echo "$current_user is already a standard user ..."
         fi
 
     else
-        logging_current_user "$current_user_uid" "$current_user" "warning" "The PrivilegesCLI tool is not installed ..."
-        logging_current_user "$current_user_uid" "$current_user" "warning" "User's privileges have not been harmed ..."
+        /bin/echo "The PrivilegesCLI tool is not installed ..."
+        /bin/echo "User's privileges have not been harmed ..."
     fi
 
     printf "%s\n" "Logs can be found at /Users/$current_user/Library/Logs/$SCRIPT_NAME.log"
 
-    logging_current_user "$current_user_uid" "$current_user" "" ""
-    logging_current_user "$current_user_uid" "$current_user" "" "--- End $SCRIPT_NAME log ---"
-    logging_current_user "$current_user_uid" "$current_user" "" ""
+    /bin/echo ""
+    /bin/echo "--- End $SCRIPT_NAME log ---"
+    /bin/echo ""
 }
 
 # Run the main
