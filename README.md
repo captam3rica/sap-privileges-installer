@@ -32,6 +32,7 @@ More info about the Privileges.app can be found in the SAP **[macOS Enterprise P
 * macOS 10.13.x
 * macOS 10.14.x
 * macOS 10.15.x
+* macOS 11.0 to 11.2
 
 ## Installation
 
