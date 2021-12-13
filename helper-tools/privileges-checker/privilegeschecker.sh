@@ -8,32 +8,44 @@
 #   A script to check the privilege status of the current logged-in user.
 #
 #   This script is designed to be used as an add-on for the SAP Privileges App. When
-#   the RequireAuthentication option is set in the Privileges configuration profile the
-#   ability to automatically toggle the logged-in user back to a standard user is
-#   disabled. The currently logged-in user will remain an admin until they manually
-#   toggle themselves back to a standard user.
+#   the RequireAuthentication option or any other preference key is used the Privileges
+#   configuration profile the ability to automatically toggle the logged-in user back to a
+#   standard user is disabled. The currently logged-in user will remain an admin until they
+#   manually toggle themselves back to a standard user.
 #
 #   Enter this script ...
 #
 #   Using this script an IT admin can automatically toggle the currently logged-in user
-#   back to standard with the RequireAuthentication key enabled. The script does this
+#   back to standard no matter which preference keys are enabled. The script does this
 #   by first checking the currently logged-in user's privilege level. Then, using the
-#   SAP PrivilegesCLI, de-elevates the user if they are an admin .
+#   SAP PrivilegesCLI, de-elevates the user if they are an admin.
 #
-#   This script can be executed from an MDM on a set interval or deployed to the client
-#   with an accompanying LaunchAgent. A sample LaunchAgent can be found in this repo
+#   Basic steps
 #
+#       1. Launch agent runs in the background running the privilegeschecker.sh script
+#          every 30 seconds.
+#       2. The privilegeschecker script checks to see if the current user is an admin.
+#       3. If not nothing else happens and the script exits.
+#       4. If yes then the script waits for a defined amount of time before removing
+#          the admin rights.
+#
+#   CHANGELOG
+#
+#       - (1.0.1)
+#           - Modified the remove_privs_function so that it can both remove or add admin privileges
+#           - Updated the function name to modify_user_privileges
 
+VERSION=1.0.1
 
-#######################################################################################
-################################ VARIABLES ############################################
-#######################################################################################
-
-
-VERSION=0.3.0
+###################################################################################################
+################################ VARIABLES ########################################################
+###################################################################################################
 
 # Number of seconds to wait before removing admin rights from the current user.
+# 900 seconds = 15 minutes
 SECONDS_TO_WAIT=900
+
+###################################################################################################
 
 SCRIPT_NAME=$(/usr/bin/basename "$0" | /usr/bin/awk -F "." '{print $1}')
 
@@ -41,18 +53,47 @@ SCRIPT_NAME=$(/usr/bin/basename "$0" | /usr/bin/awk -F "." '{print $1}')
 DSCL="/usr/bin/dscl"
 PRIVILEGES_CLI="/Applications/Privileges.app/Contents/Resources/PrivilegesCLI"
 
+###################################################################################################
+####################### FUNCTIONS - DO NOT MODIFY #################################################
+###################################################################################################
 
-#######################################################################################
-####################### FUNCTIONS - DO NOT MODIFY #####################################
-#######################################################################################
+logging_current_user() {
+    # Log to the current logged-in user's ~/Library/Logs directory.
+    # Pe-pend text and print to standard output
+    # Takes in a log level and log string.
+    # Example: logging "INFO" "Something describing what happened."
+
+    # Current logged in user UID.
+    cu_uid="$1"
+    # Currently logged in user
+    cu="$2"
+
+    log_level=$(printf "$3" | /usr/bin/tr '[:lower:]' '[:upper:]')
+    log_statement="$4"
+    LOG_NAME="$SCRIPT_NAME.log"
+    LOG_PATH="/Users/$cu/Library/Logs/$LOG_NAME"
+
+    if [ -z "$log_level" ]; then
+        # If the first builtin is an empty string set it to log level INFO
+        log_level="INFO"
+    fi
+
+    if [ -z "$log_statement" ]; then
+        # The statement was piped to the log function from another command.
+        log_statement=""
+    fi
+
+    DATE=$(date +"[%b %d, %Y %Z %T $log_level]:")
+    /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" \
+        --login printf "%s %s\n" "$DATE" "$log_statement" >>"$LOG_PATH"
+}
 
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" | \
-        /usr/sbin/scutil | \
+    printf '%s' "show State:/Users/ConsoleUser" |
+        /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
-
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
@@ -61,9 +102,9 @@ get_current_user_uid() {
 
     current_user="$1"
 
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-        /usr/bin/grep "$current_user" | \
-        /usr/bin/awk '{print $2}' | \
+    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
+        /usr/bin/grep "$current_user" |
+        /usr/bin/awk '{print $2}' |
         /usr/bin/sed -e 's/^[ \t]*//')
 
     while [ "$current_user_uid" -lt 501 ]; do
@@ -74,9 +115,9 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-            /usr/bin/grep "$current_user" | \
-            /usr/bin/awk '{print $2}' | \
+        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
+            /usr/bin/grep "$current_user" |
+            /usr/bin/awk '{print $2}' |
             /usr/bin/sed -e 's/^[ \t]*//')
 
         if [ "$current_user_uid" -lt 501 ]; then
@@ -85,7 +126,6 @@ get_current_user_uid() {
     done
     printf "%s\n" "$current_user_uid"
 }
-
 
 current_privileges() {
     # Return the current logged-in users group membership.
@@ -110,65 +150,81 @@ current_privileges() {
     printf "%s\n" "$status"
 }
 
-
-remove_admin_privileges() {
-    # Remove current logged-in user's admin privileges using the SAP PrivilegesCLI
+modify_user_privileges() {
+    # Add or remove current logged-in user's admin privileges using the SAP PrivilegesCLI
+    #
+    # Use the PrivilegesCLI to modify the current user's privileges. Pass the verb "remove" as the
+    # third parameter ($3) to the function below to remove the current user's admin privileges.
+    # Pass the verb add as the third parameter ($3) to the function below to add admin privileges
+    # to the current logged in user.
+    #
+    # Args
+    # cu_uid     - this is the current users uid
+    # cu         - the current logged in user
+    # privs_flag - this is the flag that we want to pass to the PrivilegesCLI. You can pass the
+    #              remove or add flags.
     cu_uid="$1"
     cu="$2"
+    privs_flag="$3" # add or remove
 
-    /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" --login "$PRIVILEGES_CLI" --remove
+    /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" --login "$PRIVILEGES_CLI" --"$privs_flag"
 }
 
-
-#######################################################################################
-#################### MAIN LOGIC - DO NOT MODIFY #######################################
-#######################################################################################
-
+###################################################################################################
+#################### MAIN LOGIC - DO NOT MODIFY ###################################################
+###################################################################################################
 
 main() {
     # Run the main logic
 
-    # Get current logged-in user and user uid.
+    # Get the current logged-in user and user UID
     current_user="$(get_current_user)"
     current_user_uid="$(get_current_user_uid $current_user)"
 
+    logging_current_user "$current_user_uid" "$current_user" "" "--- Start $SCRIPT_NAME log ---"
+    logging_current_user "$current_user_uid" "$current_user" "" ""
+    logging_current_user "$current_user_uid" "$current_user" "" "Version: $VERSION"
 
-    /bin/echo "--- Start $SCRIPT_NAME log ---"
-    /bin/echo ""
-    /bin/echo "Version: $VERSION"
-
-    /bin/echo "Current Logged-in User: $current_user($current_user_uid)"
+    logging_current_user "$current_user_uid" "$current_user" "" "Current Logged-in User: $current_user($current_user_uid)"
 
     # Only run if the PrivilegesCLI is installed
     if [ -f "$PRIVILEGES_CLI" ]; then
-        /bin/echo "Checking the current logged-in user's privileges ..."
+        logging_current_user "$current_user_uid" "$current_user" "" "Checking the current logged-in user's privileges ..."
 
         # Return privilege status
         privilege_status="$(current_privileges $current_user)"
-        /bin/echo"The current logged-in user's privilege is $privilege_status"
+        logging_current_user "$current_user_uid" "$current_user" "" "The current logged-in user's privilege is $privilege_status"
 
         if [ "$privilege_status" = "admin" ]; then
+            # What for the amount of time defined by the SECONDS_TO_WAIT variable
+            logging_current_user "$current_user_uid" "$current_user" "" "Sleeping for $SECONDS_TO_WAIT seconds before removing privileges ..."
+            /bin/sleep "$SECONDS_TO_WAIT"
+
             # Remove the user from the admin group
-            /bin/echo "Removing $current_user from the admin group ..."
-            remove_admin_privileges "$current_user_uid" "$current_user"
+            logging_current_user "$current_user_uid" "$current_user" "" "Removing $current_user from the admin group ..."
+
+            # Use the PrivilegesCLI to modify the current user's privileges.
+            # Pass the verb "remove" as the third parameter ($3) to the function below to remove
+            # the current user's admin privileges.
+            # Pass the verb "add" as the third parameter ($3) to the function below to add admin
+            # privileges to the current logged in user.
+            modify_user_privileges "$current_user_uid" "$current_user" "remove"
 
             privilege_status="$(current_privileges $current_user)"
-            /bin/echo "The current logged-in user's privilege is $privilege_status"
+            logging_current_user "$current_user_uid" "$current_user" "" "The current logged-in user's privilege is $privilege_status"
 
         else
-            /bin/echo "$current_user is already a standard user ..."
+            logging_current_user "$current_user_uid" "$current_user" "" "$current_user is already a standard user ..."
         fi
 
     else
-        /bin/echo "The PrivilegesCLI tool is not installed ..."
-        /bin/echo "User's privileges have not been harmed ..."
+        logging_current_user "$current_user_uid" "$current_user" "warning" "The PrivilegesCLI tool is not installed ..."
+        logging_current_user "$current_user_uid" "$current_user" "warning" "User's privileges have not been harmed ..."
     fi
 
-    printf "%s\n" "Logs can be found at /Users/$current_user/Library/Logs/$SCRIPT_NAME.log"
-
-    /bin/echo ""
-    /bin/echo "--- End $SCRIPT_NAME log ---"
-    /bin/echo ""
+    logging_current_user "$current_user_uid" "$current_user" "" ""
+    logging_current_user "$current_user_uid" "$current_user" "" "--- End $SCRIPT_NAME log ---"
+    logging_current_user "$current_user_uid" "$current_user" "" ""
 }
 
 # Run the main

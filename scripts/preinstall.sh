@@ -3,8 +3,8 @@
 #
 #   Pre installer script for the SAP Privileges App.
 #
-#   Checks for and unloads the privileges daemon and privilegschecker daemon before
-#   installing the app.
+#   Checks for and unloads the privileges daemon and privilegschecker daemon as we ll
+#   as the privileges helper before installing the app.
 #
 
 
@@ -22,6 +22,9 @@ LAUNCH_DAEMON="/Library/LaunchDaemons/corp.sap.privileges.helper.plist"
 # LaunchAgents and Labels
 PRIVILEGES_CHECKER_LA_LABEL="/Library/LaunchAgents/com.github.captam3rica.privileges.checker"
 PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.checker.plist"
+
+# Helpers and scripts
+PRIVS_HELPER="/Library/PrivilegedHelperTools/corp.sap.privileges.helper"
 
 
 #######################################################################################
@@ -129,6 +132,24 @@ main() {
 
     else
         /usr/bin/logger "$PRIVILEGES_CHECKER_LA not found ..."
+    fi
+
+    # Look for the privileges helper. Removes if it exists.
+    # This needs to be done in the case of an application upgrade. The helper version
+    # and app version must match.
+    if [ -f "$PRIVS_HELPER" ]; then
+
+        /usr/bin/logger "Removing the PrivilegeHelper ..."
+        /bin/rm "$PRIVS_HELPER"
+
+        # Check the return status of the previous command to make sure it did not fail.
+        if [ "$RET" -ne 0 ]; then
+            # Daemon failed to load
+            /usr/bin/logger "Failed to remove $PRIVS_HELPER ..."
+            exit "$RET"
+        fi
+        
+        /usr/bin/logger "$PRIVS_HELPER removed ..."
     fi
 }
 

@@ -19,7 +19,6 @@
 #                     created.
 #
 
-
 #######################################################################################
 ################################ VARIABLES ############################################
 #######################################################################################
@@ -33,19 +32,16 @@ POSITION="1"
 LAUNCH_DAEMON="/Library/LaunchDaemons/corp.sap.privileges.helper.plist"
 PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.checker.plist"
 
-
 #######################################################################################
 ####################### FUNCTIONS - DO NOT MODIFY #####################################
 #######################################################################################
 
-
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" | \
-        /usr/sbin/scutil | \
+    printf '%s' "show State:/Users/ConsoleUser" |
+        /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
-
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
@@ -54,8 +50,8 @@ get_current_user_uid() {
 
     current_user="$1"
 
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-        /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
+    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
+        /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' |
         /usr/bin/sed -e 's/^[ \t]*//')
 
     while [ "$current_user_uid" -lt 501 ]; do
@@ -66,8 +62,8 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-            /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
+        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
+            /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' |
             /usr/bin/sed -e 's/^[ \t]*//')
 
         if [ "$current_user_uid" -lt 501 ]; then
@@ -76,7 +72,6 @@ get_current_user_uid() {
     done
     printf "%s\n" "$current_user_uid"
 }
-
 
 current_privileges() {
     # Return the current logged-in users group membership.
@@ -101,11 +96,9 @@ current_privileges() {
     printf "%s\n" "$status"
 }
 
-
 #######################################################################################
 #################### MAIN LOGIC - DO NOT MODIFY #######################################
 #######################################################################################
-
 
 main() {
     # Run main logic
@@ -198,8 +191,10 @@ main() {
             if [ -z "$check_priv_in_dock" ]; then
                 # Use dockutil to add app to user's dock.
                 /usr/bin/logger "Using dockutil to add $APP_NAME to the user's Dock ..."
+
                 dockutil_response=$(/usr/local/bin/dockutil \
                     --add "/Applications/$APP_NAME" --position "$POSITION" --allhomes)
+
                 # Log the dockutil output received from the --add command.
                 /usr/bin/logger "$dockutil_response"
 
@@ -207,11 +202,12 @@ main() {
                 # If the app is already in the current user's dock make sure that it is
                 # in the first position by using the dockutil --move command.
                 /usr/bin/logger "Not attempting to add via dockutil, going to move ..."
+
                 move_response=$(/usr/local/bin/dockutil --move 'Privileges' \
                     --position "$POSITION" --allhomes)
 
                 # Log the response.
-                 /usr/bin/logger "$move_response"
+                /usr/bin/logger "$move_response"
 
             fi
 
@@ -227,7 +223,6 @@ main() {
         # exit 1
     fi
 }
-
 
 # Run main
 main
