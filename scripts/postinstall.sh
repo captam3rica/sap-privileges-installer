@@ -38,21 +38,15 @@ PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.c
 
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" |
-        /usr/sbin/scutil |
+    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
     # Will continue to loop until the UID is greater than 500
-    # Takes the current logged-in user as input $1
 
-    current_user="$1"
-
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
-        /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' |
-        /usr/bin/sed -e 's/^[ \t]*//')
+    current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
     while [ "$current_user_uid" -lt 501 ]; do
         /usr/bin/logger "" "Current user is not logged in ... WAITING"
@@ -62,12 +56,10 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
-            /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' |
-            /usr/bin/sed -e 's/^[ \t]*//')
+        current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
         if [ "$current_user_uid" -lt 501 ]; then
-            /usr/bin/logger "" "Current user: $current_user with UID ..."
+            /usr/bin/logger "Current user: $current_user with UID ..."
         fi
     done
     printf "%s\n" "$current_user_uid"
@@ -105,7 +97,7 @@ main() {
 
     # Get the current logged in user and uid
     current_user="$(get_current_user)"
-    current_user_uid="$(get_current_user_uid $current_user)"
+    current_user_uid="$(get_current_user_uid)"
 
     /usr/bin/logger "Current logged in user: $current_user"
     /usr/bin/logger "Current logged in UID: $current_user_uid"
@@ -135,8 +127,9 @@ main() {
     # the next time a user logs in.
     if [ -f "$PRIVILEGES_CHECKER_LA" ]; then
         # Load the agent
+        # Unload the agent
         /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
-            "$current_user" /bin/launchctl load "$PRIVILEGES_CHECKER_LA"
+            "$current_user" /bin/launchctl load "$PRIVILEGES_CHECKER_LA" >/dev/null 2>&1
 
         # Capture the truthy or falsy of the previous command
         RET="$?"
@@ -170,7 +163,7 @@ main() {
 
     # Wait for for dockutil
     /usr/bin/logger "Waiting some time for dockutil to be ready ..."
-    /bin/sleep 90
+    /bin/sleep 30
 
     # Move the app
     /usr/bin/logger "Attempting to move $APP_NAME to the Dock of $current_user ..."

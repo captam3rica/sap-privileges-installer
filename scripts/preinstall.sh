@@ -7,7 +7,6 @@
 #   as the privileges helper before installing the app.
 #
 
-
 #######################################################################################
 ################################ VARIABLES ############################################
 #######################################################################################
@@ -26,29 +25,21 @@ PRIVILEGES_CHECKER_LA="/Library/LaunchAgents/com.github.captam3rica.privileges.c
 # Helpers and scripts
 PRIVS_HELPER="/Library/PrivilegedHelperTools/corp.sap.privileges.helper"
 
-
 #######################################################################################
 ####################### FUNCTIONS - DO NOT MODIFY #####################################
 #######################################################################################
 
-
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil | \
+    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
-
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
     # Will continue to loop until the UID is greater than 500
-    # Takes the current logged-in user as input $1
 
-    current_user="$1"
-
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-        /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
-        /usr/bin/sed -e 's/^[ \t]*//')
+    current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
     while [ "$current_user_uid" -lt 501 ]; do
         /usr/bin/logger "" "Current user is not logged in ... WAITING"
@@ -58,36 +49,32 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-            /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
-            /usr/bin/sed -e 's/^[ \t]*//')
+        current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
         if [ "$current_user_uid" -lt 501 ]; then
-            /usr/bin/logger "" "Current user: $current_user with UID ..."
+            /usr/bin/logger "Current user: $current_user with UID ..."
         fi
     done
     printf "%s\n" "$current_user_uid"
 }
 
-
 #######################################################################################
 #################### MAIN LOGIC - DO NOT MODIFY #######################################
 #######################################################################################
-
 
 main() {
     # Run main logic
 
     current_user="$(get_current_user)"
-    current_user_uid="$(get_current_user_uid $current_user)"
+    current_user_uid="$(get_current_user_uid)"
 
     # Stop and Unload the LaunchDaemon
     if [ -f "$LAUNCH_DAEMON" ]; then
         # Stop the LaunchDaemon
-        /bin/launchctl stop "$LAUNCH_DAEMON_LABEL"
+        /bin/launchctl stop "$LAUNCH_DAEMON_LABEL" >/dev/null 2>&1
 
         # Unload the daemon
-        /bin/launchctl unload "$LAUNCH_DAEMON"
+        /bin/launchctl unload "$LAUNCH_DAEMON" >/dev/null 2>&1
 
         # Capture the truthy or falsy of the previous command
         RET="$?"
@@ -112,11 +99,11 @@ main() {
 
         # Stop the agent
         /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
-            "$current_user" /bin/launchctl stop "$PRIVILEGES_CHECKER_LA_LABEL"
+            "$current_user" /bin/launchctl stop "$PRIVILEGES_CHECKER_LA_LABEL" >/dev/null 2>&1
 
         # Unload the agent
         /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u \
-            "$current_user" /bin/launchctl unload "$PRIVILEGES_CHECKER_LA"
+            "$current_user" /bin/launchctl unload "$PRIVILEGES_CHECKER_LA" >/dev/null 2>&1
 
         # Capture the truthy or falsy of the previous command
         RET="$?"
@@ -148,11 +135,10 @@ main() {
             /usr/bin/logger "Failed to remove $PRIVS_HELPER ..."
             exit "$RET"
         fi
-        
+
         /usr/bin/logger "$PRIVS_HELPER removed ..."
     fi
 }
-
 
 # Run main
 main

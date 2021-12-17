@@ -34,16 +34,19 @@
 #       - (1.0.1)
 #           - Modified the remove_privs_function so that it can both remove or add admin privileges
 #           - Updated the function name to modify_user_privileges
+#       - (1.0.2)
+#           - Bug fix where current user uid was unabled to be determined in some edge cases.
+#           - Some additional code refactoring
 
-VERSION=1.0.1
+VERSION=1.0.2
 
 ###################################################################################################
 ################################ VARIABLES ########################################################
 ###################################################################################################
 
 # Number of seconds to wait before removing admin rights from the current user.
-# 900 seconds = 15 minutes
-SECONDS_TO_WAIT=900
+# 1200 seconds = 20 minutes
+SECONDS_TO_WAIT=1200
 
 ###################################################################################################
 
@@ -90,22 +93,15 @@ logging_current_user() {
 
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" |
-        /usr/sbin/scutil |
+    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
     # Will continue to loop until the UID is greater than 500
-    # Takes the current logged-in user as input $1
 
-    current_user="$1"
-
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
-        /usr/bin/grep "$current_user" |
-        /usr/bin/awk '{print $2}' |
-        /usr/bin/sed -e 's/^[ \t]*//')
+    current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
     while [ "$current_user_uid" -lt 501 ]; do
         /usr/bin/logger "" "Current user is not logged in ... WAITING"
@@ -115,13 +111,10 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID |
-            /usr/bin/grep "$current_user" |
-            /usr/bin/awk '{print $2}' |
-            /usr/bin/sed -e 's/^[ \t]*//')
+        current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
         if [ "$current_user_uid" -lt 501 ]; then
-            /usr/bin/logger "" "Current user: $current_user with UID ..."
+            /usr/bin/logger "Current user: $current_user with UID ..."
         fi
     done
     printf "%s\n" "$current_user_uid"
@@ -133,13 +126,12 @@ current_privileges() {
     # Returns admin if the user is a member of the local admin group. Returns standard
     # if the user is a member of the standard users group "aka not an admin."
     #
-    cu="$1"
+    # $1: current logged in user
 
     # Returns true if the current logged in user is a member of the local admins group.
-    group_membership=$("$DSCL" . read /groups/admin | /usr/bin/grep "$cu")
-    RET="$?"
+    group_membership=$("$DSCL" . read /groups/admin | /usr/bin/grep "$1")
 
-    if [ "$RET" -eq 0 ]; then
+    if [ "$?" -eq 0 ]; then
         # User is in the admin group
         status="admin"
     else
@@ -148,26 +140,6 @@ current_privileges() {
     fi
 
     printf "%s\n" "$status"
-}
-
-modify_user_privileges() {
-    # Add or remove current logged-in user's admin privileges using the SAP PrivilegesCLI
-    #
-    # Use the PrivilegesCLI to modify the current user's privileges. Pass the verb "remove" as the
-    # third parameter ($3) to the function below to remove the current user's admin privileges.
-    # Pass the verb add as the third parameter ($3) to the function below to add admin privileges
-    # to the current logged in user.
-    #
-    # Args
-    # cu_uid     - this is the current users uid
-    # cu         - the current logged in user
-    # privs_flag - this is the flag that we want to pass to the PrivilegesCLI. You can pass the
-    #              remove or add flags.
-    cu_uid="$1"
-    cu="$2"
-    privs_flag="$3" # add or remove
-
-    /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" --login "$PRIVILEGES_CLI" --"$privs_flag"
 }
 
 ###################################################################################################
@@ -179,7 +151,7 @@ main() {
 
     # Get the current logged-in user and user UID
     current_user="$(get_current_user)"
-    current_user_uid="$(get_current_user_uid $current_user)"
+    current_user_uid="$(get_current_user_uid)"
 
     logging_current_user "$current_user_uid" "$current_user" "" "--- Start $SCRIPT_NAME log ---"
     logging_current_user "$current_user_uid" "$current_user" "" ""
@@ -203,12 +175,8 @@ main() {
             # Remove the user from the admin group
             logging_current_user "$current_user_uid" "$current_user" "" "Removing $current_user from the admin group ..."
 
-            # Use the PrivilegesCLI to modify the current user's privileges.
-            # Pass the verb "remove" as the third parameter ($3) to the function below to remove
-            # the current user's admin privileges.
-            # Pass the verb "add" as the third parameter ($3) to the function below to add admin
-            # privileges to the current logged in user.
-            modify_user_privileges "$current_user_uid" "$current_user" "remove"
+            # Remove the current loggedin user's privileges
+            /bin/launchctl asuser "$current_user_uid" /usr/bin/sudo -u "$current_user" --login "$PRIVILEGES_CLI" --remove
 
             privilege_status="$(current_privileges $current_user)"
             logging_current_user "$current_user_uid" "$current_user" "" "The current logged-in user's privilege is $privilege_status"
