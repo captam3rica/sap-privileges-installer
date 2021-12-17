@@ -4,7 +4,7 @@
 
 ## About 
 
-Use this repo to assist in deploying the SAP Enterprise Privileges App to your Mac fleet.
+Use this repo to assist in deploying the [SAP Enterprise Privileges App](https://github.com/SAP/macOS-enterprise-privileges) to your Mac fleet.
 
 The base installation of Privileges does not have a way to remove user privileges automatically if the priviliges app is launched by clicking on the app and then selecting **Request privileges**. In this scenario the user will remain an admin until they manually remove their own privileges by launching the app again.
 
@@ -20,7 +20,7 @@ A sample LaunchAgent can be found in this repo [here](https://github.com/captam3
 
 **Privileges.app** for macOS is designed to allow users to work as a standard user for day-to-day use, by providing a quick and easy way to get administrator rights when needed. When you do need admin rights, you can get them by clicking on the **Privileges** icon in your Dock.
 
-More info about the Privileges.app can be found in the SAP **[macOS Enterprise Privileges](https://github.com/SAP/macOS-enterprise-privileges)** Repo
+More info about the Privileges.app can be found in the SAP [macOS Enterprise Privileges](https://github.com/SAP/macOS-enterprise-privileges) Repo
 
 Sample preference files to managed Privileges can be found [here](https://github.com/SAP/macOS-enterprise-privileges/tree/main/application_management).
 
