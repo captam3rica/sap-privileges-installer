@@ -54,7 +54,7 @@ To change the amount of time that `privilegeschecker` will wait until it toggles
     
     # Number of minutes to wait before removing admin rights from the current user.
     # If you want to do 2 hours, for example, it would looke like 120 minutes.
-    TIME_TO_WAIT=20
+    MINUTES_TO_WAIT=20
     ```
 
 1. Create a new installer package containing the update.
