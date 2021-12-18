@@ -34,12 +34,32 @@ Sample preference files to managed Privileges can be found [here](https://github
 
 ## Deployment steps
 
-1. Create a package. 
-    - The [Packages.app](http://s.sudre.free.fr/Software/Packages/about.html) tool was used here, but any packaging method can be used.
-    - A sample `.pkgproj` file can be found in this repo [here](https://github.com/captam3rica/sap-privileges-installer/tree/master/sample-packages-project)
+1. Download the latest release package [here](https://github.com/captam3rica/sap-privileges-installer/releases/latest)
+    - This installer is configured to removed admin privileges after **20 minutes**.
+    - If you would like to configure a different amount of time see [Modifying the privilegeschecker script]()
 2. Upload the package to your MDM.
 3. Deploy the package to your Mac fleet.
 
+## Modifying the privilegeschecker script
+
+To change the amount of time that `privilegeschecker` will wait until it toggles the logged in user's privileges back to standard you will need to perform the following steps
+
+1. Download the [example packages app project](https://github.com/captam3rica/sap-privileges-installer/releases/latest) of this repo.
+1. Modify the `SECONDS_TO_WAIT` variable to the desired amount of time. (set to 1200 seconds aka 20 minutes by default)
+
+    ```sh
+    ###################################################################################################
+    ################################ VARIABLES ########################################################
+    ###################################################################################################
+    
+    # Number of minutes to wait before removing admin rights from the current user.
+    # If you want to do 2 hours, for example, it would looke like 120 minutes.
+    TIME_TO_WAIT=20
+    ```
+
+1. Create a new installer package containing the update.
+    - The [Packages.app](http://s.sudre.free.fr/Software/Packages/about.html) tool was used here, but any packaging method can be used.
+    - A sample `.pkgproj` file can be found in this repo [here](https://github.com/captam3rica/sap-privileges-installer/tree/master/sample-packages-project)
 
 ## Support
 

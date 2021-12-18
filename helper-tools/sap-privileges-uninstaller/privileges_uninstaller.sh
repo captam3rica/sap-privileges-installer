@@ -26,7 +26,6 @@
 #       6. Using dockutil, remove app from the current user's Dock
 #
 
-
 #######################################################################################
 ################################ VARIABLES ############################################
 #######################################################################################
@@ -60,28 +59,21 @@ SCRIPT_NAME=$(/usr/bin/basename "$0" | /usr/bin/awk -F "." '{print $1}')
 # Binaries
 PRIVS_CLI="/Applications/Privileges.app/Contents/Resources/PrivilegesCLI"
 
-
 #######################################################################################
 ####################### FUNCTIONS - DO NOT MODIFY #####################################
 #######################################################################################
 
 get_current_user() {
     # Return the current logged-in user
-    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil | \
+    printf '%s' "show State:/Users/ConsoleUser" | /usr/sbin/scutil |
         /usr/bin/awk '/Name :/ && ! /loginwindow/ {print $3}'
 }
-
 
 get_current_user_uid() {
     # Return the current logged-in user's UID.
     # Will continue to loop until the UID is greater than 500
-    # Takes the current logged-in user as input $1
 
-    current_user="$1"
-
-    current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-        /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
-        /usr/bin/sed -e 's/^[ \t]*//')
+    current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
     while [ "$current_user_uid" -lt 501 ]; do
         /usr/bin/logger "" "Current user is not logged in ... WAITING"
@@ -91,17 +83,14 @@ get_current_user_uid() {
         current_user="$(get_current_user)"
 
         # Get uid again
-        current_user_uid=$(/usr/bin/dscl . -list /Users UniqueID | \
-            /usr/bin/grep "$current_user" | /usr/bin/awk '{print $2}' | \
-            /usr/bin/sed -e 's/^[ \t]*//')
+        current_user_uid=$(/usr/bin/id -u "$(get_current_user)")
 
         if [ "$current_user_uid" -lt 501 ]; then
-            /usr/bin/logger "" "Current user: $current_user with UID ..."
+            /usr/bin/logger "Current user: $current_user with UID ..."
         fi
     done
     printf "%s\n" "$current_user_uid"
 }
-
 
 current_privileges() {
     # Return the current logged-in users group membership.
@@ -126,7 +115,6 @@ current_privileges() {
     printf "%s\n" "$status"
 }
 
-
 add_admin_privileges() {
     # Remove current logged-in user's admin privileges using the SAP PrivilegesCLI
     cu_uid="$1"
@@ -134,7 +122,6 @@ add_admin_privileges() {
 
     /bin/launchctl asuser "$cu_uid" /usr/bin/sudo -u "$cu" --login "$PRIVS_CLI" --add
 }
-
 
 unload_and_stop_agent_or_daemon() {
     # Stop and unload LaunchAgents and LaunchDaemons
@@ -170,7 +157,6 @@ unload_and_stop_agent_or_daemon() {
     fi
 }
 
-
 kill_process() {
     # Kill a process by name
 
@@ -187,7 +173,6 @@ kill_process() {
     fi
 }
 
-
 #######################################################################################
 #################### MAIN LOGIC - DO NOT MODIFY #######################################
 #######################################################################################
@@ -200,7 +185,7 @@ kill_process() {
 
 # Grab the current user and current user uuid
 current_user="$(get_current_user)"
-current_user_uid="$(get_current_user_uid $current_user)"
+current_user_uid="$(get_current_user_uid)"
 
 #
 #   CHECK CURRENT PRIVILEGES LEVEL FOR CURRENT LOGGED-IN USER
@@ -244,17 +229,14 @@ unload_and_stop_agent_or_daemon "$PRIVS_CHECKER_LA" "$PRIVSCHECKER_LA_LABEL"
 #
 
 # Get the app process if it is running
-PRIVILEGES_APP_PROC=$(/usr/bin/pgrep "Privileges")
+APP_PROC=$(/usr/bin/pgrep "Privileges")
 
-if [ "$PRIVILEGES_APP_PROC" != "" ]; then
-    /usr/bin/logger "The $APP_NAME process is running with id $PRIVILEGES_APP_PROC ..."
+if [ "$APP_PROC" != "" ]; then
+    /usr/bin/logger "The $APP_NAME process is running with id $APP_PROC ..."
     /usr/bin/logger "Killing the process ..."
-    /usr/bin/killall "$PRIVILEGES_APP_PROC"
+    /usr/bin/killall "$APP_PROC"
 
-    # Capture the truthy or falsy of the previous command
-    RET="$?"
-
-    if [ "$RET" -ne 0 ]; then
+    if [ "$?" -ne 0 ]; then
         # Daemon failed to load
         /usr/bin/logger "Failed kill the $APP_NAME process ..."
         exit "$RET"
@@ -308,7 +290,6 @@ if [ -e "/usr/local/bin/dockutil" ]; then
 else
     /usr/bin/logger "The dockutil binary is not installed on this system 🙁"
 fi
-
 
 /usr/bin/logger ""
 /usr/bin/logger "End uninstaller ..."
