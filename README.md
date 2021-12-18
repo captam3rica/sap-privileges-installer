@@ -44,8 +44,9 @@ Sample preference files to managed Privileges can be found [here](https://github
 
 To change the amount of time that `privilegeschecker` will wait until it toggles the logged in user's privileges back to standard you will need to perform the following steps
 
-1. Download the [example packages app project](https://github.com/captam3rica/sap-privileges-installer/releases/latest) of this repo.
-1. Modify the `SECONDS_TO_WAIT` variable to the desired amount of time. (set to 1200 seconds aka 20 minutes by default)
+1. Download the [sample-packages-project](https://github.com/captam3rica/sap-privileges-installer/releases/latest) zip file.
+1. Open the `privilegeschecker.zsh` script in a text editor. (`payload > Library > Scripts > mdmhelpers`)
+1. Modify the `MINUTES_TO_WAIT` variable to the desired amount of time. (set to 1200 seconds aka 20 minutes by default)
 
     ```sh
     ###################################################################################################
@@ -57,9 +58,8 @@ To change the amount of time that `privilegeschecker` will wait until it toggles
     MINUTES_TO_WAIT=20
     ```
 
-1. Create a new installer package containing the update.
+1. Create a new installer package containing the update
     - The [Packages.app](http://s.sudre.free.fr/Software/Packages/about.html) tool was used here, but any packaging method can be used.
-    - A sample `.pkgproj` file can be found in this repo [here](https://github.com/captam3rica/sap-privileges-installer/tree/master/sample-packages-project)
 
 ## Support
 
