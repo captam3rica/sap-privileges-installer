@@ -54,7 +54,7 @@ To change the amount of time that `privilegeschecker` will wait until it toggles
     ###################################################################################################
     
     # Number of minutes to wait before removing admin rights from the current user.
-    # If you want to do 2 hours, for example, it would looke like 120 minutes.
+    # If you want to do 2 hours, for example, it would look like 120 minutes.
     MINUTES_TO_WAIT=20
     ```
 
