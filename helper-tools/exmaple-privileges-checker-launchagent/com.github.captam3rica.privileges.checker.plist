@@ -8,7 +8,7 @@
 		<string>Aqua</string>
 		<key>ProgramArguments</key>
 		<array>
-			<string>/bin/sh</string>
+			<string>/bin/zsh</string>
 			<string>/Library/Scripts/mdmhelpers/privilegeschecker.zsh</string>
 		</array>
 		<key>StartInterval</key>
